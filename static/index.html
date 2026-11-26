@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#173b63">
+  <title>India Post AI Shipment Assistant</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand-mark" aria-hidden="true">IP</div>
+      <div class="brand-copy">
+        <h1>India Post AI Shipment Assistant</h1>
+        <p>Local assistant · Private to this computer</p>
+      </div>
+      <div class="topbar-actions">
+        <button type="button" id="open-alerts-btn" class="topbar-btn" title="View tracking alerts and subscriptions">🔔 Tracking Alerts</button>
+        <button type="button" id="auth-status-btn" class="topbar-btn" title="Sign in as a registered user">Sign In</button>
+        <span class="connection-pill"><span class="status-dot"></span> Local session</span>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <aside class="history-panel" aria-label="Conversation history">
+        <div class="history-heading">
+          <h2>Conversations</h2>
+          <button type="button" id="new-conversation-button" class="new-chat-button">+ New</button>
+        </div>
+        <p class="history-caption">Saved on this computer</p>
+        <div id="conversation-list" class="conversation-list" aria-live="polite"></div>
+      </aside>
+
+      <section class="chat-workspace">
+        <div class="chat-toolbar">
+          <div>
+            <h2 id="conversation-heading">New conversation</h2>
+            <p id="conversation-state">Active conversation</p>
+          </div>
+          <button type="button" id="close-conversation-button" class="close-chat-button">Close conversation</button>
+        </div>
+
+        <section class="welcome" id="welcome-panel">
+          <div class="welcome-icon" aria-hidden="true">✉</div>
+          <h2>How can I help with your shipment?</h2>
+          <p>Ask about tracking an India Post consignment or understanding shipment updates.</p>
+          <div class="suggestions">
+            <button type="button" class="suggestion" data-prompt="How can I track an India Post consignment?">How do I track a consignment?</button>
+            <button type="button" class="suggestion" data-prompt="What do the different shipment tracking statuses mean?">Explain tracking statuses</button>
+          </div>
+        </section>
+
+        <section class="chat-log" id="chat-log" aria-live="polite" aria-label="Conversation"></section>
+        <div class="error-banner" id="error-banner" role="alert" hidden></div>
+
+        <form class="composer" id="message-form">
+          <label class="visually-hidden" for="message-input">Your message</label>
+          <textarea id="message-input" name="message" rows="1" maxlength="4000"
+            placeholder="Type your message…" required></textarea>
+          <button id="send-button" type="submit" aria-label="Send message">
+            <span>Send</span><span aria-hidden="true">➤</span>
+          </button>
+        </form>
+        <p class="privacy-note">Conversation history is stored in the local project database. AI requests use the configured provider.</p>
+      </section>
+    </main>
+  </div>
+
+  <!-- Auth Modal -->
+  <div id="auth-modal" class="modal-backdrop" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
+      <div class="modal-header">
+        <h2 id="auth-modal-title">User Authentication</h2>
+        <button type="button" class="modal-close-btn" id="close-auth-modal" aria-label="Close dialog">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="auth-error" class="modal-error" hidden></div>
+        
+        <!-- Step 1: Request Code -->
+        <div id="auth-step-request">
+          <p class="modal-desc">Enter your registered email address to receive a secure, single-use login code.</p>
+          <form id="auth-request-form">
+            <label class="modal-label" for="auth-email-input">Email address</label>
+            <input type="email" id="auth-email-input" class="modal-input" placeholder="user@example.com" required>
+            <button type="submit" id="auth-request-btn" class="modal-primary-btn">Send Login Code</button>
+          </form>
+        </div>
+
+        <!-- Step 2: Verify Code -->
+        <div id="auth-step-verify" hidden>
+          <p class="modal-desc" id="auth-verify-desc">A 6-digit code has been sent. Enter it below to sign in.</p>
+          <form id="auth-verify-form">
+            <label class="modal-label" for="auth-code-input">6-digit verification code</label>
+            <input type="text" id="auth-code-input" class="modal-input modal-code-input" maxlength="6" pattern="[0-9]{6}" placeholder="123456" required>
+            <div class="modal-btn-row">
+              <button type="button" id="auth-back-btn" class="modal-secondary-btn">Back</button>
+              <button type="submit" id="auth-verify-btn" class="modal-primary-btn">Verify & Sign In</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Step 3: Authenticated Profile -->
+        <div id="auth-step-profile" hidden>
+          <div class="profile-card">
+            <div class="profile-avatar">✓</div>
+            <div>
+              <h3 id="profile-user-heading">Signed in</h3>
+              <p id="profile-meta" class="modal-desc"></p>
+            </div>
+          </div>
+          <button type="button" id="auth-logout-btn" class="modal-danger-btn">Sign Out</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Subscriptions & Alerts Modal -->
+  <div id="alerts-modal" class="modal-backdrop" hidden>
+    <div class="modal-card modal-card-large" role="dialog" aria-modal="true" aria-labelledby="alerts-modal-title">
+      <div class="modal-header">
+        <h2 id="alerts-modal-title">Tracking Alerts & Subscriptions</h2>
+        <button type="button" class="modal-close-btn" id="close-alerts-modal" aria-label="Close dialog">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="alerts-error" class="modal-error" hidden></div>
+        <div id="alerts-success" class="modal-success" hidden></div>
+
+        <!-- Subscribe Form -->
+        <div class="alerts-section">
+          <h3>Subscribe to a Consignment</h3>
+          <p class="modal-desc">Receive real-time alerts when your shipment checkpoint or delivery status changes.</p>
+          <form id="subscribe-form" class="subscribe-grid">
+            <div>
+              <label class="modal-label" for="sub-tracking-input">Consignment Number</label>
+              <input type="text" id="sub-tracking-input" class="modal-input" placeholder="e.g. IN123456789XX" required>
+            </div>
+            <div>
+              <label class="modal-label" for="sub-channel-select">Notification Channel</label>
+              <select id="sub-channel-select" class="modal-input modal-select">
+                <option value="email">Email Notification</option>
+                <option value="telegram">Telegram Bot</option>
+              </select>
+            </div>
+            <div id="sub-recipient-group">
+              <label class="modal-label" for="sub-recipient-input">Email Address</label>
+              <input type="email" id="sub-recipient-input" class="modal-input" placeholder="your.email@example.com">
+            </div>
+            <div class="consent-group">
+              <label class="consent-label">
+                <input type="checkbox" id="sub-consent-checkbox" required checked>
+                <span>I explicitly consent to receive automated shipment status updates for this consignment.</span>
+              </label>
+            </div>
+            <button type="submit" id="sub-submit-btn" class="modal-primary-btn">Subscribe Consignment</button>
+          </form>
+        </div>
+
+        <!-- Telegram Deep Link Banner -->
+        <div id="telegram-link-banner" class="telegram-banner">
+          <div class="telegram-icon">✈</div>
+          <div class="telegram-text">
+            <strong>Connect with Telegram Bot</strong>
+            <p>Link your session directly with our bot to receive alerts in Telegram.</p>
+          </div>
+          <a id="telegram-link-btn" href="#" target="_blank" rel="noopener noreferrer" class="telegram-cta-btn">Open Telegram</a>
+        </div>
+
+        <!-- Active Subscriptions List -->
+        <div class="alerts-section">
+          <h3>Active Subscriptions</h3>
+          <div id="subscriptions-list-container" class="subs-container">
+            <p class="subs-empty">Loading subscriptions…</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/app.js" defer></script>
+</body>
+</html>
